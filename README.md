@@ -1,19 +1,17 @@
 # Workshop Workflow
 
-## Iteration 01: End to end DDD
-### DDD Concepts: Commands, Events, Aggregates, Domain Services, Repositories, Entities
+## Iteration 02: Adding Value Objects
+
+### DDD Concepts: Value Objects
 
 ### Overview
 
+### Overview
+In this iteration we will enhance the `Attendee` model by adding an address field. This will allow us to store more detailed information about each attendee.
+
 **Introduction:**
-In this iteration, we will cover the basics of Domain-Driven Design by implementing a basic workflow for registering a conference attendee. We will create the following DDD constructs:
-- Aggregate
-- Domain Service
-- Domain Event
-- Command
-- Adapter
-- Entity
-- Repository
+In this iteration, we will enhance the `Attendee` model by adding an address field. This will allow us to store more detailed information about each attendee.
+- Value Objects
 
 We will alss use the `Hexangonal Architecture`, or `Ports and Adapters` pattern to integrate with external systems, ensuring a clean separation of concerns.
 
@@ -33,6 +31,7 @@ dddhexagonalworkshop
 │       │   │   └── AttendeeService.java
 │       │   │   └── RegisterAttendeeCommand.java
 │       │   └── valueobjects
+│       │       └── Address.java
 │       ├── infrastructure
 │       │   ├── AttendeeEndpoint.java
 │       │   ├── AttendeeDTO.java
@@ -54,128 +53,297 @@ The project uses Quarkus, a Java framework that provides built-in support for RE
 
 In this first iteration, we will implement the basic workflow for registering an attendee. The steps are as follows:
 
-1. Create a `RegisterAttendeeCommand` with only one, basic property (email).
-2. Implement an Adapter in the form of a REST Endpoint, `AttendeeEndpoint` with a POST method.
-3. Implement a Service, `AttendeeService` that will orchestration the registration process.
-4. Create an `Attendee` entity that represents the attendee in the domain and implements the application's invariants or business rules.
-4. Create a Domain Event, `AttendeeRegisteredEvent`, that will be published when an attendee is successfully registered.
-5. Create a Repository interface, `AttendeeRepository`, that defines methods for saving and retrieving attendees.
-6. Create an Entity, `AttendeeEntity`, to persist instances of the `Attendee` entity in a database.
-7. Create an Adapter, `AttendeeEventPublisher`, that sends events to Kafka to propagate changes to the rest of the system.
+1. 
 
 By the end of Iteration 1, you'll have a solid foundation in DDD concepts and a very basic working application.
 
 Let's get coding!
 
-### Step 1: Commands
+### Step 1: Create the Address Value Object
 
-Commands are objects that encapsulate a request to perform an action. Commands are immutable and can fail or be rejected.  Commands are closely related to Events, which we will cover later. The difference between the two is that Commands represent an intention to change the state of the system, while Events are statements of fact that have already happened.
+Value Objects are objects that describe the state of something else.  They are not Entities, which have continuity and identify something that is tracked over time.  Value Objects are equal based on their value while Entites are equal based on their identifier.
 
-We will start by creating a command to register an attendee. This command will encapsulate the data needed to register an attendee, which in this iteration is just the email address.
+In this iteration, we will create a `Value Object` to represent the address of an attendee. This will allow us to encapsulate the address data in a single object, making it easier to manage and validate.
 
-The `RegisterAttendeeCommand` can be found in the `dddhexagonalworkshop.conference.attendees.domain.services` package because it is part of AttendeeService's API. We will implement the `AttendeeService` later; for now, we will just create the command.
-
-Update the RegisterAttendeeCommand object with a single String, "email."
-
-```java
-package dddhexagonalworkshop.conference.attendees.domain.services;
-
-public record RegisterAttendeeCommand(String email) {
-}
-
-```
-
-### Adapters
-
-The `Ports and Adapters` pattern, also known as `Hexagonal Architecture`, is a design pattern that separates the core business logic from external systems. The phrase was coined by Alistair Cockburn in the early 2000s.  
-
-The pattern fits well with Domain-Driven Design (DDD) because it allows the domain model to remain pure and focused on business logic, while the adapters handle the technical details.  This allows the core application to remain independent of the technologies used for input/output, such as databases, message queues, or REST APIs.  
-
-Adapters are components that translate between the domain model and external systems or frameworks. In the context of a REST endpoint, an adapter handles the conversion of HTTP requests to commands that the domain model can process, and vice versa for responses. We don't need to manually convert the JSON to and from Java objects, as Quarkus provides built-in support for this using Jackson.
-
-Complete the AttendeeEndpoint in the `dddhexagonalworkshop.conference.attendees.infrastructure` package.
+The `Address` Value Object can be found in the `dddhexagonalworkshop.conference.attendees.domain.valueobjects` package.  Update the `Address` object with the following value: 
+- String email
+- String street
+- String street2
+- String city
+- String stateOrProvince
+- String postCode
+- String country
 
 ```java
-package dddhexagonalworkshop.conference.attendees.infrastructure;
+package dddhexagonalworkshop.conference.attendees.domain.valueobjects;
 
-import dddhexagonalworkshop.conference.attendees.api.AttendeeDTO;
-import dddhexagonalworkshop.conference.attendees.dddhexagonalworkshop.conference.attendees.domain.services.AttendeeService;
-import dddhexagonalworkshop.conference.attendees.dddhexagonalworkshop.conference.attendees.domain.services.RegisterAttendeeCommand;
-import io.quarkus.logging.Log;
-import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-
-import java.net.URI;
-
-@Path("/attendees")
-@Consumes(MediaType.APPLICATION_JSON)
-@Produces(MediaType.APPLICATION_JSON)
-public class AttendeeEndpoint {
-
-  @Inject
-  AttendeeService attendeeService;
-
-  @POST
-  public Response registerAttendee(RegisterAttendeeCommand registerAttendeeCommand) {
-    Log.debugf("Creating attendee %s", registerAttendeeCommand);
-
-    AttendeeDTO attendeeDTO = attendeeService.registerAttendee(registerAttendeeCommand);
-
-    Log.debugf("Created attendee %s", attendeeDTO);
-
-    return Response.created(URI.create("/" + attendeeDTO.email())).entity(attendeeDTO).build();
-  }
-
-}
-
-```
-
-### Data Transfer Objects (DTOs)
-
-We also need to create a simple DTO (Data Transfer Object) to represent the attendee in the response. Data Transfer Objects are used to transfer data between layers, especially when the data structure is different from the domain model, which is why we are using it here.
-
-```java
-package dddhexagonalworkshop.conference.attendees.infrastrcture;
-
-public record AttendeeDTO(String email) {
+public record Address(String street, String street2, String city, String stateOrProvince, String postCode, String country) {
 }
 ```
 
-### Domain Services
+***Optional:***
 
-- Create the AttendeeService in the attendes/domain/services package
-    - create one method, "registerAttendee" that takes a RegisterAttendeeCommand
+Add validation to the Address record to ensure that all fields are properly formatted and not empty.
 
 ```java
-package domain.services;
+public record Address(String street, String street2, String city, String stateOrProvince, String postCode, String country) {
+    /**
+     * Compact constructor for validation
+     */
+    public Address {
+        validate(street, city, stateOrProvince, postCode, country);
+    }
 
-import dddhexagonalworkshop.conference.attendees.infrastrcture.AttendeeDTO;
-import jakarta.enterprise.context.ApplicationScoped;
+    /**
+     * Validates that the address components are properly formatted.
+     *
+     * @throws IllegalArgumentException if the address is invalid
+     */
+    private void validate(String street, String city, String stateOrProvince, String postCode, String country) {
+        if (street == null || street.isBlank()) {
+            throw new IllegalArgumentException("Street cannot be empty");
+        }
 
-@ApplicationScoped
-public class AttendeeService {
+        if (city == null || city.isBlank()) {
+            throw new IllegalArgumentException("City cannot be empty");
+        }
 
-    public AttendeeDTO registerAttendee(RegisterAttendeeCommand registerAttendeeAttendeeCommand) {
-        // Logic to register an attendee
-        // This is a placeholder implementation
-        return new AttendeeDTO(registerAttendeeAttendeeCommand.email());
+        if (stateOrProvince == null || stateOrProvince.isBlank()) {
+            throw new IllegalArgumentException("State or province cannot be empty");
+        }
+
+        if (postCode == null || postCode.isBlank()) {
+            throw new IllegalArgumentException("Postal code cannot be empty");
+        }
+
+        if (country == null || country.isBlank()) {
+            throw new IllegalArgumentException("Country cannot be empty");
+        }
+
+        if (street.length() > 100) {
+            throw new IllegalArgumentException("Street is too long (max 100 characters)");
+        }
+
+        if (city.length() > 50) {
+            throw new IllegalArgumentException("City is too long (max 50 characters)");
+        }
+
+        if (stateOrProvince.length() > 50) {
+            throw new IllegalArgumentException("State or province is too long (max 50 characters)");
+        }
+
+        if (postCode.length() > 20) {
+            throw new IllegalArgumentException("Postal code is too long (max 20 characters)");
+        }
+
+        if (country.length() > 50) {
+            throw new IllegalArgumentException("Country is too long (max 50 characters)");
+        }
+    }
+
+    /**
+     * Returns a formatted single-line address string.
+     *
+     * @return formatted address
+     */
+    public String getFormattedAddress() {
+        StringBuilder sb = new StringBuilder(street);
+        if (street2 != null && !street2.isBlank()) {
+            sb.append(", ").append(street2);
+        }
+        sb.append(", ").append(city)
+                .append(", ").append(stateOrProvince)
+                .append(" ").append(postCode)
+                .append(", ").append(country);
+        return sb.toString();
+    }
+
+    @Override
+    public String toString() {
+        return getFormattedAddress();
+    }
+}
+```
+
+
+
+#### 2. Update the Add the RegisterAttendeeCommand
+
+First, update the `RegisterAttendeeCommand` to include the new address field along with first and last name fields.
+
+```java
+public record RegisterAttendeeCommand(String email, String firstName, String lastName, Address address) {
+}
+```
+
+#### 3. Update the `Attendee` aggregate model
+
+Update the `Attendee` aggregate model to include the new address field and first and last name fields.
+
+NOTE: We are creating a method, "getFullName", to return the full name of the attendee by concatenating the first and last names.
+
+```java
+package dddhexagonalworkshop.conference.attendees.domain;
+
+import dddhexagonalworkshop.conference.attendees.domain.events.AttendeeRegisteredEvent;
+import dddhexagonalworkshop.conference.attendees.domain.services.AttendeeRegistrationResult;
+import dddhexagonalworkshop.conference.attendees.domain.valueobjects.Address;
+
+public class Attendee {
+
+    String email;
+
+    String firstName;
+
+    String lastName;
+
+    Address address;
+
+    public Attendee(String email, String firstName, String lastName, Address address) {
+        this.email = email;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.address = address;
+    }
+
+    public static AttendeeRegistrationResult registerAttendee(String email, String firstName, String lastName, Address address) {
+        // Here you would typically perform some business logic, like checking if the attendee already exists
+        // and then create an event to publish.
+        AttendeeRegisteredEvent event = new AttendeeRegisteredEvent(email, this.getFullName());
+        return new AttendeeRegistrationResult(this, event);
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    String getFullName() {
+        return firstName + " " + lastName;
+    }
+
+    String getFirstName() {
+        return firstName;
+    }
+
+    String getLastName() {
+        return lastName;
+    }
+
+    public Address getAddress() {
+        return address;
+    }
+}
+```
+#### 4. Update the `AttendeeRegisteredEvent`
+
+Add the attendee's full name to `AttendeeRegisteredEvent`.  We won't add the address to the event, as it is not necessary for the rest of the system. 
+
+If, in the future, a different Bounded Context needs an attendee's address, we can work with the team that owns that Bounded Context to implement a method for them to query our microservice for the attendee's address.
+
+```java
+package dddhexagonalworkshop.conference.attendees.domain.events;
+
+public record AttendeeRegisteredEvent(String email, String fullName) {
+}
+```
+#### 5. Update the persistence layer to handle the new fields
+
+First, create a new `AddressEntity` class to represent the address in the persistence layer.
+
+```java
+package dddhexagonalworkshop.conference.attendees.persistence;
+
+import jakarta.persistence.Embeddable;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+
+@Entity @Table(name = "attendee_address")
+public class AddressEntity {
+
+    @Id @GeneratedValue
+    private Long id;
+
+    String street;
+
+    String street2;
+
+    String city;
+
+    String stateOrProvince;
+
+    String postCode;
+
+    String country;
+
+    protected AddressEntity() {
+    }
+
+    protected AddressEntity(String street, String street2, String city, String stateOrProvince, String postCode, String country) {
+        this.street = street;
+        this.street2 = street2;
+        this.city = city;
+        this.stateOrProvince = stateOrProvince;
+        this.postCode = postCode;
+        this.country = country;
+    }
+
+    String getStreet() {
+        return street;
+    }
+
+    void setStreet(String street) {
+        this.street = street;
+    }
+
+    String getStreet2() {
+        return street2;
+    }
+
+    void setStreet2(String street2) {
+        this.street2 = street2;
+    }
+
+    String getCity() {
+        return city;
+    }
+
+    void setCity(String city) {
+        this.city = city;
+    }
+
+    String getStateOrProvince() {
+        return stateOrProvince;
+    }
+
+    void setStateOrProvince(String stateOrProvince) {
+        this.stateOrProvince = stateOrProvince;
+    }
+
+    String getPostCode() {
+        return postCode;
+    }
+
+    void setPostCode(String postCode) {
+        this.postCode = postCode;
+    }
+
+    String getCountry() {
+        return country;
+    }
+
+    void setCountry(String country) {
+        this.country = country;
     }
 }
 
 ```
 
-### Entities
-
-- Create the AttendeeEntity in the attendees/persistence package
-    - only one field, "email"
+Second, add the new fields to the `AttendeeEntity` class in the persistence layer.
 
 ```java
 package dddhexagonalworkshop.conference.attendees.persistence;
 
-import dddhexagonalworkshop.conference.attendees.api.AddressDTO;
-import dddhexagonalworkshop.conference.attendees.domain.valueobjects.Badge;
 import jakarta.persistence.*;
 
 @Entity @Table(name = "attendee")
@@ -184,14 +352,17 @@ public class AttendeeEntity {
     @Id @GeneratedValue
     private Long id;
 
+    @OneToOne(cascade = CascadeType.ALL)
+    AddressEntity address;
+
     private String email;
 
     protected AttendeeEntity() {
-
     }
 
-    protected AttendeeEntity(String email) {
+    protected AttendeeEntity(String email, AddressEntity address) {
         this.email = email;
+        this.address = address;
     }
 
     protected Long getId() {
@@ -205,57 +376,7 @@ public class AttendeeEntity {
 }
 ```
 
-### Repositories
-
-- Create the AttendeeRegistredEvent in the domain/events package
-    - create a single field, "email"
-
-```java
-package dddhexagonalworkshop.conference.attendees.domain.events;
-
-public record AttendeeRegisteredEvent(String email) {
-}
-```
-
-- Create the AttendeeRegistrationResult in the attendees/domain/services package
-    - create two fields, "attendee" and "attendeeRegistrationEvent"
-
-```java
-package dddhexagonalworkshop.conference.attendees.domain.services;
-
-import dddhexagonalworkshop.conference.attendees.domain.aggregates.Attendee;
-import dddhexagonalworkshop.conference.attendees.domain.events.AttendeeRegisteredEvent;
-
-public record AttendeeRegistrationResult(Attendee attendee, AttendeeRegisteredEvent attendeeRegisteredEvent) {
-}
-```
-
-- Create the Attendee Aggregate in attendees/domain/aggregates
-    - create a single method, "registerAttendee"
-    - implement the method
-        - by creating an AttendeeEntity and an AttendeeRegistredEvent
-        - Create the AttendeeRegistrationResult in the attendees/domain/services package to return the AttendeeEntity and AttendeeRegisteredEvent
-```java
-package dddhexagonalworkshop.conference.attendees.domain;
-
-public class Attendee {
-
-  String email;
-
-  public static Attendee registerAttendee(String email) {
-    Attendee attendee = new Attendee();
-    attendee.email = email;
-    return attendee;
-  }
-  
-  public String getEmail(){
-    return email;
-  }
-}
-
-```
-
-- Create the AttendeeRepository using Hibernate Panache
+Third, update the `AttendeeRepository` to handle the new fields:
 
 ```java
 package dddhexagonalworkshop.conference.attendees.persistence;
@@ -266,46 +387,43 @@ import io.quarkus.hibernate.orm.panache.PanacheRepository;
 public class AttendeeRepository implements PanacheRepository<AttendeeEntity> {
 
 
-  public void persist(Attendee aggregate) {
-    // transform the aggregate to an entity
-    AttendeeEntity attendeeEntity = fromAggregate(aggregate);
-    persist(attendeeEntity);
-  }
+    public void persist(Attendee aggregate) {
+        // transform the aggregate to an entity
+        AttendeeEntity attendeeEntity = fromAggregate(aggregate);
+        persist(attendeeEntity);
+    }
 
-  private AttendeeEntity fromAggregate(Attendee attendee) {
-    AttendeeEntity entity = new AttendeeEntity(attendee.getEmail());
-    return entity;
-  }
+    private AttendeeEntity fromAggregate(Attendee attendee) {
+        AddressEntity addressEntity = new AddressEntity(
+                attendee.getAddress().street(),
+                attendee.getAddress().street2(),
+                attendee.getAddress().city(),
+                attendee.getAddress().stateOrProvince(),
+                attendee.getAddress().postCode(),
+                attendee.getAddress().country()
+        );
+        AttendeeEntity entity = new AttendeeEntity(attendee.getEmail(), addressEntity);
+        return entity;
+    }
 }
 ```
 
-- Create the AttendeeEventPublisher
-    - create a single method, "publish" that takes an AttendeeRegisteredEvent
-    - implement the method by sending the event to Kafka
+#### 6. Update the AttendeeDTO
+
+First update the `AttendeeDTO` that is used to transfer data between the service and the controller to include the new address field.
 
 ```java
 package dddhexagonalworkshop.conference.attendees.infrastrcture;
 
-import dddhexagonalworkshop.conference.attendees.domain.events.AttendeeRegisteredEvent;
-import jakarta.enterprise.context.ApplicationScoped;
-import org.eclipse.microprofile.reactive.messaging.Channel;
-import org.eclipse.microprofile.reactive.messaging.Emitter;
+import dddhexagonalworkshop.conference.attendees.domain.valueobjects.Address;
 
-@ApplicationScoped
-public class AttendeeEventPublisher {
-
-  @Channel("attendees")
-  public Emitter<AttendeeRegisteredEvent> attendeesTopic;
-
-  public void publish(AttendeeRegisteredEvent attendeeRegisteredEvent) {
-    attendeesTopic.send(attendeeRegisteredEvent);
-  }
+public record AttendeeDTO(String email, String fullName) {
 }
 ```
 
-- Update the AttendeeService so that it persists the attendee and publishes the event
-    - update the registerAttendee method to return an AttendeeRegistratedResult
-    - update the registerAttendee method to call the AttendeeEventPublisher
+#### 7. Update the AttendeeService
+
+Second, update the `AttendeeService` to handle the new fields:
 
 ```java
 package dddhexagonalworkshop.conference.attendees.domain.services;
@@ -322,78 +440,42 @@ import jakarta.transaction.Transactional;
 @ApplicationScoped
 public class AttendeeService {
 
-  @Inject
-  AttendeeRepository attendeeRepository;
-
-  @Inject
-  AttendeeEventPublisher attendeeEventPublisher;
-
-  @Transactional
-  public AttendeeDTO registerAttendee(RegisterAttendeeCommand registerAttendeeAttendeeCommand) {
-    // Logic to register an attendee
-    AttendeeRegistrationResult result = Attendee.registerAttendee(registerAttendeeAttendeeCommand.email());
-
-
-    //persist the attendee
-    QuarkusTransaction.requiringNew().run(() -> {
-      attendeeRepository.persist(result.attendee());
-    });
-
-    //notify the system that a new attendee has been registered
-    attendeeEventPublisher.publish(result.attendeeRegisteredEvent());
-
-    return new AttendeeDTO(result.attendee().getEmail());
-  }
-}
-```
-
-Update the AttendeeEndpoint to return the AttendeeDTO
-
-```java
-package dddhexagonalworkshop.conference.attendees.infrastrcture;
-
-import dddhexagonalworkshop.conference.attendees.domain.services.AttendeeService;
-import dddhexagonalworkshop.conference.attendees.domain.services.RegisterAttendeeCommand;
-import io.quarkus.logging.Log;
-import jakarta.inject.Inject;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-
-import java.net.URI;
-
-@Path("/attendees")
-@Consumes(MediaType.APPLICATION_JSON)
-@Produces(MediaType.APPLICATION_JSON)
-public class AttendeeEndpoint {
+    @Inject
+    AttendeeRepository attendeeRepository;
 
     @Inject
-    AttendeeService attendeeService;
+    AttendeeEventPublisher attendeeEventPublisher;
 
-    @POST
-    public Response registerAttendee(RegisterAttendeeCommand registerAttendeeCommand) {
-        Log.debugf("Creating attendee %s", registerAttendeeCommand);
+    @Transactional
+    public AttendeeDTO registerAttendee(RegisterAttendeeCommand registerAttendeeAttendeeCommand) {
+        // Logic to register an attendee
+        AttendeeRegistrationResult result = Attendee.registerAttendee(registerAttendeeAttendeeCommand.email(),
+                registerAttendeeAttendeeCommand.firstName(),
+                registerAttendeeAttendeeCommand.lastName(),
+                registerAttendeeAttendeeCommand.address());
 
-        AttendeeDTO attendeeDTO = attendeeService.registerAttendee(registerAttendeeCommand);
 
-        Log.debugf("Created attendee %s", attendeeDTO);
+        //persist the attendee
+        QuarkusTransaction.requiringNew().run(() -> {
+            attendeeRepository.persist(result.attendee());
+        });
 
-        return Response.created(URI.create("/" + attendeeDTO.email())).entity(attendeeDTO).build();
+        //notify the system that a new attendee has been registered
+        attendeeEventPublisher.publish(result.attendeeRegisteredEvent());
+
+        return new AttendeeDTO(result.attendee().getEmail(), result.attendee().getFullName());
     }
-
 }
 ```
 
 ## Summary
-In this first iteration, we have created the basic structure of the Attendee registration micorservice.
+
+In this iteration, we implemented an Address value object to enhance the Attendee model. The address information is now properly encapsulated in a dedicated value object, following DDD principles. We updated the entire workflow from command handling through domain logic to persistence to support addresses, maintaining clean boundaries between the different layers of our hexagonal architecture.
 
 ### Key points
-***Hexagonal Architecture/Ports and Adapters***: The AttendeeEndpoint is a _Port_ for the registering attendees.  In our case the _Adaper_ is the Jackson library, which is built into Quarkus, and handles converting JSON to Java objects and vice versa.  
-The AttendeeEventPubliser is also an Adapter that sends events to Kafka, which is another Port in our architecture.  
-The AttendeeRepository is a Port that allows us to persist the AttendeeEntity to a database.
-
-***Aggregates*** Business logic is implemented in an Aggregate, Attendee. The Aggregate is responsible for creating the AttendeeEntity and the AttendeeRegisteredEvent.
-
-***Commands*** we use a Command object, RegisterAttendeeCommand, to encapsulate the data needed to register an attendee.  Commands are different from Events because Commands can fail or be rejected, while Events are statements of fact that have already happened.
-
-***Events*** we use an Event, AttendeeRegisteredEvent, to notify other parts of the system that an attendee has been registered.  Events are statements of fact that have already happened and cannot be changed.
+- Value Objects: We implemented the Address as a value object - an immutable representation of address data without its own identity, following core DDD principles.
+- Domain Model Enhancement: We extended the Attendee aggregate to include address information, demonstrating how to evolve domain models while maintaining encapsulation.
+- Persistence Layer Updates: We created a dedicated AddressEntity with a one-to-one relationship to AttendeeEntity, showing how to map complex domain objects to relational storage.
+- Command Pattern: We modified the RegisterAttendeeCommand to include address information, illustrating how commands can evolve to capture new requirements.
+- Hexagonal Architecture: Throughout the changes, we maintained separation between domain, persistence, and infrastructure layers, demonstrating how hexagonal architecture allows for changes while maintaining boundaries.
+- Transaction Management: We used Quarkus transactions to ensure atomicity when persisting related entities, showing how to handle complex persistence operations.
